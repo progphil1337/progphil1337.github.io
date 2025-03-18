@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Animation</title>
+</head>
+<body>
+<canvas id="canvas" style="border: 1px solid black"  width="600" height="200"></canvas>
+<button onclick="spawn()" disabled>Spawn</button>
+</body>
+<script>
+    const NAMES = [
+        'Sturze',
+        'Flogge',
+        '0Tomcraft0',
+        'Tom',
+        'Phil',
+        'Tina',
+        'Marcel',
+        'Ronja',
+        'GoGoWe',
+        'Flo',
+        'Andi',
+
+    ];
+
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    context.imageSmoothingEnabled = false;
+
+    class Entity {
+        #canvasPosition = {x: 0, y: 0};
+        #sprite = 0;
+        #interval = null;
+        #name;
+        #outOfRange = false;
+
+        constructor(name) {
+            this.#name = name;
+        }
+
+        spawn() {
+            this.#interval = setInterval(() => this.update(), 100);
+        }
+
+        update() {
+            this.#sprite = this.#sprite === 7 ? 0 : this.#sprite + 1;
+            this.#canvasPosition.x += 2;
+
+            if (this.#canvasPosition.x > canvas.width) {
+                clearInterval(this.#interval);
+                this.#outOfRange = true;
+            }
+
+        }
+
+        isOutOfRange() {
+            return this.#outOfRange;
+        }
+
+        draw(context, spriteSheet) {
+            const spritePos = this.#getSpritePos();
+
+            const y = canvas.height - spritePos.height;
+
+            context.fillText(this.#name, this.#canvasPosition.x, y - 10);
+            context.drawImage(
+                spriteSheet,
+                spritePos.x,
+                spritePos.y,
+                spritePos.width,
+                spritePos.height,
+                this.#canvasPosition.x,
+                y,
+                31,
+                48
+            );
+        }
+
+        #getSpritePos() {
+            return {
+                x: this.#sprite * 31,
+                y: 0,
+                width: 31,
+                height: 48
+            };
+        }
+    }
+
+    const spriteSheet = new Image(248, 48);
+    spriteSheet.onload = () => {
+        document.getElementsByTagName('button')[0].removeAttribute('disabled')
+    };
+
+    let ENTITIES = [];
+
+    function spawn() {
+        const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+        const e = new Entity(name);
+        e.spawn();
+
+        ENTITIES.push(e);
+    }
+
+    setInterval(() => {
+        context.clearRect(0, 0, canvas.width, canvas.height)
+
+        ENTITIES = ENTITIES.filter((e) => !e.isOutOfRange());
+
+        for (e of ENTITIES) {
+            e.draw(context, spriteSheet);
+        }
+    }, 100);
+
+    spriteSheet.src = 'sprite.png';
+</script>
+</html>
