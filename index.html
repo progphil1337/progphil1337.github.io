@@ -4,10 +4,24 @@
     <title>Animation</title>
 </head>
 <body>
-<canvas id="canvas" style="border: 1px solid black"  width="600" height="200"></canvas>
+<canvas id="canvas" style="border: 1px solid black"  width="1200" height="200"></canvas>
 <button onclick="spawn()" disabled>Spawn</button>
 </body>
 <script>
+    const SETUP = {
+        SPRITES: {
+            COUNT: 6,
+            SIZE: {
+                WIDTH: 43,
+                HEIGHT: 47,
+            }
+        },
+        ENTITY: {
+            VELOCITY: 5 // px
+        }
+    };
+
+
     const NAMES = [
         'Sturze',
         'Flogge',
@@ -26,11 +40,13 @@
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
     context.imageSmoothingEnabled = false;
+    context.font = `20px Verdana`;
 
     class Entity {
         #canvasPosition = {x: 0, y: 0};
         #sprite = 0;
-        #interval = null;
+        #spriteInterval = null;
+        #posInterval = null;
         #name;
         #outOfRange = false;
 
@@ -39,18 +55,22 @@
         }
 
         spawn() {
-            this.#interval = setInterval(() => this.update(), 100);
+            this.#spriteInterval = setInterval(() => this.updateSprite(), 100);
+            this.#posInterval = setInterval(() => this.updatePosition(), 50);
         }
 
-        update() {
-            this.#sprite = this.#sprite === 7 ? 0 : this.#sprite + 1;
-            this.#canvasPosition.x += 2;
+        updateSprite() {
+            this.#sprite = this.#sprite === SETUP.SPRITES.COUNT - 1 ? 0 : this.#sprite + 1;
+        }
+
+        updatePosition() {
+            this.#canvasPosition.x += SETUP.ENTITY.VELOCITY;
 
             if (this.#canvasPosition.x > canvas.width) {
-                clearInterval(this.#interval);
+                clearInterval(this.#spriteInterval);
+                clearInterval(this.#posInterval);
                 this.#outOfRange = true;
             }
-
         }
 
         isOutOfRange() {
@@ -71,22 +91,22 @@
                 spritePos.height,
                 this.#canvasPosition.x,
                 y,
-                31,
-                48
+                SETUP.SPRITES.SIZE.WIDTH,
+                SETUP.SPRITES.SIZE.HEIGHT
             );
         }
 
         #getSpritePos() {
             return {
-                x: this.#sprite * 31,
+                x: this.#sprite * SETUP.SPRITES.SIZE.WIDTH,
                 y: 0,
-                width: 31,
-                height: 48
+                width: SETUP.SPRITES.SIZE.WIDTH,
+                height: SETUP.SPRITES.SIZE.HEIGHT
             };
         }
     }
 
-    const spriteSheet = new Image(248, 48);
+    const spriteSheet = new Image(SETUP.SPRITES.SIZE.WIDTH*SETUP.SPRITES.COUNT, SETUP.SPRITES.SIZE.HEIGHT);
     spriteSheet.onload = () => {
         document.getElementsByTagName('button')[0].removeAttribute('disabled')
     };
@@ -109,7 +129,7 @@
         for (e of ENTITIES) {
             e.draw(context, spriteSheet);
         }
-    }, 100);
+    }, 30 / 1000);
 
     spriteSheet.src = 'sprite.png';
 </script>
