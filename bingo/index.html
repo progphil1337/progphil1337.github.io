@@ -38,7 +38,10 @@
 
     ];
 
-    const NAME = prompt('Name:');
+    let name;
+    while ((name = prompt('Name:')).trim().length === 0);
+
+    const NAME = name;
     const SEED = generateSeed(NAME);
 
     function generateSeed(secret) {
