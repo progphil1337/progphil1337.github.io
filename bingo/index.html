@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="de">
+    <head>
+        <title>Bingo</title>
+    </head>
+    <style>
+        body, html {
+            padding: 0;
+            margin: 0;
+            background-color: #27ae60;
+            height: 100%;
+        }
+
+        #bingo {
+            top: calc(50% - 400px);
+            left: calc(50% - 300px);
+            border: 2px solid rgb(0 0 0 / 50%);
+            position: absolute;
+            border-radius: 3px;
+            box-shadow:
+                2px 2px 5px 1px rgb(0 0 0 / 20%),
+                2px -2px 5px 1px rgb(0 0 0 / 20%),
+                -2px 2px 5px 1px rgb(0 0 0 / 20%),
+                -2px -2px 5px 1px rgb(0 0 0 / 20%);
+        }
+    </style>
+<body>
+<canvas id="bingo" width="600" height="800"></canvas>
+<div id="salt"></div>
+<script>
+    const TEXTS = [
+        'Controller',
+        'Steam Deck',
+        'Spoiler',
+        'Beamer',
+        '85 Zoller',
+        'neues iPhone',
+
+    ];
+
+    const NAME = prompt('Name:');
+    const SEED = generateSeed(NAME);
+
+    function generateSeed(secret) {
+        return [...secret].reduce((acc, char) => {
+            return (acc * 31 + char.charCodeAt(0)) >>> 0;
+        }, 0);
+    }
+
+    const canvas = document.getElementById('bingo');
+    const context = canvas.getContext('2d');
+    context.imageSmoothingEnabled = false;
+
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+
+    gradient.addColorStop(0, '#16a085');
+    gradient.addColorStop(1, '#2c3e50');
+
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    function createSeededRandom(seed) {
+        return function() {
+            seed = (seed * 9301 + 49297) % 233280;
+            return seed / 233280;
+        };
+    }
+
+    function drawLine({startX, startY}, {endX, endY}) {
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(startX, startY);
+        context.lineTo(endX, endY);
+        context.stroke();
+    }
+
+    const BOX_WIDTH = 600 / 5;
+    const BOX_HEIGHT = 600 / 5;
+
+    function drawGrid() {
+        for(let i = 1; i <= 5; i++) {
+            if (i < 5) {
+                drawLine({startX: BOX_WIDTH * i, startY: 200}, {endX: BOX_WIDTH * i, endY: 800});
+            }
+            drawLine({startX: 0, startY: 200 + BOX_HEIGHT * (i - 1)}, {endX: 600, endY: 200 + BOX_HEIGHT * (i - 1)});
+        }
+    }
+
+    function shuffle(given) {
+        const randomizer = createSeededRandom(SEED);
+
+        let array = given.slice();
+        let currentIndex = array.length;
+
+        while (currentIndex > 0) {
+
+            let randomIndex = Math.floor(randomizer() * currentIndex);
+            currentIndex--;
+
+            [
+                array[currentIndex],
+                array[randomIndex]
+            ] = [
+                array[randomIndex],
+                array[currentIndex]
+            ];
+        }
+
+        return array;
+    }
+
+    function generateFieldOrder() {
+        return shuffle(
+            Array.from(
+                {
+                    length: 25
+                },
+                (_, i) => TEXTS[i] ?? null
+            )
+        );
+    }
+
+    function drawText(string, {x, y}) {
+        const grid = {
+            x: (x - 1) * BOX_WIDTH,
+            y: (y - 1) * BOX_HEIGHT + 200
+        }
+
+        const text = new Text(string, `20px Verdana`, '#ecf0f1');
+        text.fitWidth(context, BOX_WIDTH);
+        text.draw(context, grid.x + ((BOX_WIDTH - text.getWidth(context)) / 2), grid.y + ((BOX_HEIGHT - text.getHeight(context)) / 2));
+    }
+
+    class Text {
+        #string = '';
+        #font;
+        #color;
+        #lines = [];
+
+        LINE_MARGIN = 10;
+
+        constructor(string, font = '20px Arial', color = '#000000') {
+            this.#string = string;
+            this.#font = font;
+            this.#color = color;
+
+            this.#lines = [string];
+        }
+
+        getFontHeight(context) {
+            const font = context.font;
+
+            context.font = this.#font;
+            let metrics = context.measureText(this.#string);
+
+            context.font = font;
+
+            return metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        }
+
+        getHeight(context) {
+            return (this.getFontHeight(context) + this.LINE_MARGIN) * this.#lines.length - this.LINE_MARGIN;
+        }
+
+        getWidth(context) {
+            let width = 0;
+            for (let line of this.#lines) {
+                width = Math.max(width, context.measureText(line).width);
+            }
+
+            return width;
+        }
+
+        fitWidth(context, width) {
+            const splitOnChar = ' ';
+
+            const font = context.font;
+
+            context.font = this.#font;
+            let metrics = context.measureText(this.#string);
+            const amountLines = Math.ceil(metrics.width / width);
+
+            if (amountLines === 1) {
+                return;
+            }
+
+            let words = this.#string.split(splitOnChar);
+            const lines = [];
+            while (words.length > 0) {
+                let pointer = 0;
+                let line = [];
+                while (context.measureText([words[pointer], ...line].join(splitOnChar)).width < width || line.length === 0) {
+                    line.push(words[pointer++]);
+                }
+
+                lines.push(line.join(splitOnChar).trim());
+
+                words = words.slice(line.length);
+            }
+
+            this.#lines = lines;
+            context.font = font;
+        }
+
+        draw(context, x, y) {
+            const fontHeight = this.getFontHeight(context);
+
+            context.font = this.#font;
+
+            for (let i = 0; i < this.#lines.length; i++) {
+                const line = this.#lines[i];
+                context.fillStyle = this.#color;
+                context.fillText(line, x, y + fontHeight * (i + 1) + (i > 0 ? this.LINE_MARGIN * i : 0));
+            }
+        }
+    }
+
+    function fillGrid(fields) {
+        for(let i = 1; i <= fields.length; i++) {
+            const field = fields[i - 1];
+            if (field === null) {
+                continue;
+            }
+
+            const y = Math.ceil(i / 5);
+            const x = i - y * 5 + 5;
+
+            console.log(field, i, x, y);
+            drawText(field, {x, y})
+        }
+    }
+
+    const title = new Text('BINGO', `50px Verdana`, '#ecf0f1');
+    title.fitWidth(context, 600);
+    title.draw(context,
+        (600 - title.getWidth(context)) / 2,
+        (200 - title.getHeight(context)) / 2,
+    );
+
+    const cardOwner = new Text(NAME, `20px Verdana`, '#ecf0f1');
+    cardOwner.fitWidth(context, 600);
+    cardOwner.draw(context,
+        15,
+        15,
+    );
+
+    drawGrid();
+    fields = generateFieldOrder();
+    fillGrid(fields);
+</script>
+</body>
+</html>
