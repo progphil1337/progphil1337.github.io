@@ -11,11 +11,16 @@
             height: 100%;
         }
 
-        #bingo {
+        #wrapper {
+            position: absolute;
             top: calc(50% - 400px);
             left: calc(50% - 300px);
+            width: 600px;
+        }
+
+        #bingo {
             border: 2px solid rgb(0 0 0 / 50%);
-            position: absolute;
+            position: relative;
             border-radius: 3px;
             box-shadow:
                 2px 2px 5px 1px rgb(0 0 0 / 20%),
@@ -23,11 +28,140 @@
                 -2px 2px 5px 1px rgb(0 0 0 / 20%),
                 -2px -2px 5px 1px rgb(0 0 0 / 20%);
         }
+
+        #download-btn {
+            margin-top: 10px;
+            position: relative;
+            width: 100%;
+            font: 20px Verdana;
+            border-radius: 3px;
+            background: #27AE60;
+            color: #ecf0f1;
+            border: 0;
+            box-shadow:
+                    2px 2px 5px 1px rgb(0 0 0 / 20%),
+                    2px -2px 5px 1px rgb(0 0 0 / 20%),
+                    -2px 2px 5px 1px rgb(0 0 0 / 20%),
+                    -2px -2px 5px 1px rgb(0 0 0 / 20%);
+            padding: 10px 0;
+            background: linear-gradient(135deg,#16a085 0%, #2c3e50 100%);
+        }
+        #download-btn:hover {
+            cursor: pointer;
+        }
     </style>
 <body>
+<div id="wrapper">
 <canvas id="bingo" width="600" height="800"></canvas>
-<div id="salt"></div>
+    <button id="download-btn" onclick="download()">Download</button>
+</div>
 <script>
+    class Storage {
+        PREFIX = 'bingo_';
+
+        #storage;
+
+        constructor() {
+            this.#storage = localStorage;
+        }
+
+        write(key, value) {
+            this.#storage.setItem(this.PREFIX + key, value);
+        }
+
+        read(key) {
+            return this.#storage.getItem(this.PREFIX + key);
+        }
+
+        has(key) {
+            return this.read(key) !== null;
+        }
+    }
+
+    class Text {
+        #string = '';
+        #font;
+        #color;
+        #lines = [];
+
+        LINE_MARGIN = 10;
+
+        constructor(string, font = '20px Arial', color = '#000000') {
+            this.#string = string;
+            this.#font = font;
+            this.#color = color;
+
+            this.#lines = [string];
+        }
+
+        getFontHeight(context) {
+            const font = context.font;
+
+            context.font = this.#font;
+            let metrics = context.measureText(this.#string);
+
+            context.font = font;
+
+            return metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        }
+
+        getHeight(context) {
+            return (this.getFontHeight(context) + this.LINE_MARGIN) * this.#lines.length - this.LINE_MARGIN;
+        }
+
+        getWidth(context) {
+            let width = 0;
+            for (let line of this.#lines) {
+                width = Math.max(width, context.measureText(line).width);
+            }
+
+            return width;
+        }
+
+        fitWidth(context, width) {
+            const splitOnChar = ' ';
+
+            const font = context.font;
+
+            context.font = this.#font;
+            let metrics = context.measureText(this.#string);
+            const amountLines = Math.ceil(metrics.width / width);
+
+            if (amountLines === 1) {
+                return;
+            }
+
+            let words = this.#string.split(splitOnChar);
+            const lines = [];
+            while (words.length > 0) {
+                let pointer = 0;
+                let line = [];
+                while (context.measureText([words[pointer], ...line].join(splitOnChar)).width < width || line.length === 0) {
+                    line.push(words[pointer++]);
+                }
+
+                lines.push(line.join(splitOnChar).trim());
+
+                words = words.slice(line.length);
+            }
+
+            this.#lines = lines;
+            context.font = font;
+        }
+
+        draw(context, x, y) {
+            const fontHeight = this.getFontHeight(context);
+
+            context.font = this.#font;
+
+            for (let i = 0; i < this.#lines.length; i++) {
+                const line = this.#lines[i];
+                context.fillStyle = this.#color;
+                context.fillText(line, x, y + fontHeight * (i + 1) + (i > 0 ? this.LINE_MARGIN * i : 0));
+            }
+        }
+    }
+
     const TEXTS = [
         'Controller',
         'Steam Deck',
@@ -35,13 +169,23 @@
         'Beamer',
         '85 Zoller',
         'neues iPhone',
-
+        'neuer PC',
+        'Snowboard / Ski',
+        'Longboard',
+        'Reise die er sich nicht leisten kann',
+        'Motorrad',
+        'Motorrad schein'
     ];
 
-    let name;
-    while ((name = prompt('Name:')).trim().length === 0);
+    const STORAGE = new Storage();
 
-    const NAME = name;
+    let name;
+    if (!STORAGE.has('name')) {
+        while ((name = prompt('Name:')).trim().length === 0);
+        STORAGE.write('name', name);
+    }
+
+    const NAME = STORAGE.read('name');
     const SEED = generateSeed(NAME);
 
     function generateSeed(secret) {
@@ -134,90 +278,6 @@
         text.draw(context, grid.x + ((BOX_WIDTH - text.getWidth(context)) / 2), grid.y + ((BOX_HEIGHT - text.getHeight(context)) / 2));
     }
 
-    class Text {
-        #string = '';
-        #font;
-        #color;
-        #lines = [];
-
-        LINE_MARGIN = 10;
-
-        constructor(string, font = '20px Arial', color = '#000000') {
-            this.#string = string;
-            this.#font = font;
-            this.#color = color;
-
-            this.#lines = [string];
-        }
-
-        getFontHeight(context) {
-            const font = context.font;
-
-            context.font = this.#font;
-            let metrics = context.measureText(this.#string);
-
-            context.font = font;
-
-            return metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-        }
-
-        getHeight(context) {
-            return (this.getFontHeight(context) + this.LINE_MARGIN) * this.#lines.length - this.LINE_MARGIN;
-        }
-
-        getWidth(context) {
-            let width = 0;
-            for (let line of this.#lines) {
-                width = Math.max(width, context.measureText(line).width);
-            }
-
-            return width;
-        }
-
-        fitWidth(context, width) {
-            const splitOnChar = ' ';
-
-            const font = context.font;
-
-            context.font = this.#font;
-            let metrics = context.measureText(this.#string);
-            const amountLines = Math.ceil(metrics.width / width);
-
-            if (amountLines === 1) {
-                return;
-            }
-
-            let words = this.#string.split(splitOnChar);
-            const lines = [];
-            while (words.length > 0) {
-                let pointer = 0;
-                let line = [];
-                while (context.measureText([words[pointer], ...line].join(splitOnChar)).width < width || line.length === 0) {
-                    line.push(words[pointer++]);
-                }
-
-                lines.push(line.join(splitOnChar).trim());
-
-                words = words.slice(line.length);
-            }
-
-            this.#lines = lines;
-            context.font = font;
-        }
-
-        draw(context, x, y) {
-            const fontHeight = this.getFontHeight(context);
-
-            context.font = this.#font;
-
-            for (let i = 0; i < this.#lines.length; i++) {
-                const line = this.#lines[i];
-                context.fillStyle = this.#color;
-                context.fillText(line, x, y + fontHeight * (i + 1) + (i > 0 ? this.LINE_MARGIN * i : 0));
-            }
-        }
-    }
-
     function fillGrid(fields) {
         for(let i = 1; i <= fields.length; i++) {
             const field = fields[i - 1];
@@ -231,6 +291,14 @@
             console.log(field, i, x, y);
             drawText(field, {x, y})
         }
+    }
+
+    function download() {
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `bingo-${NAME}.png`;
+        link.href = dataURL;
+        link.click();
     }
 
     const title = new Text('BINGO', `50px Verdana`, '#ecf0f1');
