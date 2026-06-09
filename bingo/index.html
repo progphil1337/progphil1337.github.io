@@ -13,7 +13,7 @@
 
         #wrapper {
             position: absolute;
-            top: calc(50% - 400px);
+            top: 100px;
             left: calc(50% - 300px);
             width: 600px;
         }
@@ -172,16 +172,18 @@
         'neuer PC',
         'Snowboard / Ski',
         'Longboard',
-        'Reise die er sich nicht leisten kann',
+        'Reise (zu teuer)',
         'Motorrad',
-        'Motorrad schein'
+        'Motorrad schein',
+        'Playstation',
+        'Joker'
     ];
 
     const STORAGE = new Storage();
 
     let name;
     if (!STORAGE.has('name')) {
-        while ((name = prompt('Name:')).trim().length === 0);
+        while ((name = prompt('Name:').trim()).length === 0);
         STORAGE.write('name', name);
     }
 
@@ -198,13 +200,17 @@
     const context = canvas.getContext('2d');
     context.imageSmoothingEnabled = false;
 
-    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    function drawBackground() {
+        const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
 
-    gradient.addColorStop(0, '#16a085');
-    gradient.addColorStop(1, '#2c3e50');
+        gradient.addColorStop(0, '#16a085');
+        gradient.addColorStop(1, '#2c3e50');
 
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    drawBackground();
 
     function createSeededRandom(seed) {
         return function() {
@@ -278,6 +284,11 @@
         text.draw(context, grid.x + ((BOX_WIDTH - text.getWidth(context)) / 2), grid.y + ((BOX_HEIGHT - text.getHeight(context)) / 2));
     }
 
+    function drawX({x, y}) {
+        drawLine({startX: BOX_WIDTH * x, startY: y * BOX_HEIGHT + 200}, {endX: BOX_WIDTH * x + BOX_WIDTH, endY: y * BOX_HEIGHT + BOX_HEIGHT + 200});
+        drawLine({startX: BOX_WIDTH * x + BOX_WIDTH, startY: y * BOX_HEIGHT + 200}, {endX: BOX_WIDTH * x, endY: y * BOX_HEIGHT + BOX_HEIGHT + 200});
+    }
+
     function fillGrid(fields) {
         for(let i = 1; i <= fields.length; i++) {
             const field = fields[i - 1];
@@ -288,7 +299,6 @@
             const y = Math.ceil(i / 5);
             const x = i - y * 5 + 5;
 
-            console.log(field, i, x, y);
             drawText(field, {x, y})
         }
     }
@@ -301,23 +311,72 @@
         link.click();
     }
 
-    const title = new Text('BINGO', `50px Verdana`, '#ecf0f1');
-    title.fitWidth(context, 600);
-    title.draw(context,
-        (600 - title.getWidth(context)) / 2,
-        (200 - title.getHeight(context)) / 2,
-    );
+    function drawHeadline() {
+        const title = new Text('BINGO', `50px Verdana`, '#ecf0f1');
+        title.fitWidth(context, 600);
+        title.draw(context,
+            (600 - title.getWidth(context)) / 2,
+            (200 - title.getHeight(context)) / 2,
+        );
 
-    const cardOwner = new Text(NAME, `20px Verdana`, '#ecf0f1');
-    cardOwner.fitWidth(context, 600);
-    cardOwner.draw(context,
-        15,
-        15,
-    );
+        const cardOwner = new Text(NAME, `20px Verdana`, '#ecf0f1');
+        cardOwner.fitWidth(context, 600);
+        cardOwner.draw(context,
+            15,
+            15,
+        );
+    }
 
+    drawHeadline();
     drawGrid();
     fields = generateFieldOrder();
     fillGrid(fields);
+
+    if (!STORAGE.has('clicked')) {
+        STORAGE.write('clicked', JSON.stringify([]))
+    }
+
+    let clickedFields = JSON.parse(STORAGE.read('clicked'));
+
+    function drawClickedFields() {
+        for (let clickedField of clickedFields) {
+            drawX(clickedField);
+        }
+    }
+
+    drawClickedFields();
+
+    function onClick(e) {
+        const x = e.offsetX;
+        const y = e.offsetY;
+
+        if (y < 200) {
+            return;
+        }
+
+        const gridX = Math.floor(x / BOX_WIDTH);
+        const gridY = Math.floor((y - 200) / BOX_HEIGHT);
+
+        const checkPos = (field) => field.x === gridX && field.y === gridY;
+
+        if (clickedFields.filter(checkPos).length > 0) {
+            clickedFields = clickedFields.filter(field => field.x !== gridX || field.y !== gridY);
+        } else {
+            clickedFields.push({x: gridX, y: gridY})
+        }
+
+        context.clearRect(0, 0, 600, 800)
+        drawBackground()
+        drawHeadline();
+        drawGrid();
+        fillGrid(fields);
+        drawClickedFields();
+
+
+        STORAGE.write('clicked', JSON.stringify(clickedFields));
+    }
+
+    canvas.addEventListener('click', onClick);
 </script>
 </body>
 </html>
