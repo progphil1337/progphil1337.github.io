@@ -54,7 +54,7 @@
        ========================================= */
     @media (min-width: 768px) {
       .grid-layout {
-        grid-template-columns: 300px 1fr;
+        grid-template-columns: 350px 1fr;
         grid-template-rows: auto auto 1fr auto;
         grid-template-areas:
           "header  header"
@@ -69,7 +69,7 @@
        ========================================= */
     @media (min-width: 1024px) {
       .grid-layout {
-        grid-template-columns: 300px 1fr 300px;
+        grid-template-columns: 350px 1fr 300px;
         grid-template-rows: auto 1fr auto;
         grid-template-areas:
           "header  header  header"
@@ -84,7 +84,7 @@
     .grid-layout > * {
       padding: 2rem;
       background-color: var(--light-creme);
-      text-align: center;
+      text-align: left;
       font-weight: bold;
     }
 
@@ -157,7 +157,8 @@
     }
 
     h1, h2, h3, h4 {
-      color: var(--dark-brown)
+      color: var(--dark-brown);
+      text-align: center;
     }
 
     hr {
@@ -175,6 +176,7 @@
       Header
     </header>
     <nav class="sidebar">
+      <h2>Navigation</h2>
       <ul>Über mich</ul>
       <ul>Meine Vision</ul>
       <ul>Presse</ul>
